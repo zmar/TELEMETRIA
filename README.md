@@ -1,0 +1,2 @@
+# TELEMETRIA
+O telemetrii
