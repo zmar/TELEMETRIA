@@ -1,3 +1,4 @@
+setwd("C:/Users/Zbyszek/Desktop/WAS/TELEMETRIA")
 library ( googlesheets)
 library( ggplot2)
 library( reshape2)
@@ -106,6 +107,41 @@ abline( reg=lm( dane_4plus_Wiadomosci_liczba_ts~time( dane_4plus_Wiadomosci_licz
 decompose( dane_4plus_Wiadomosci_liczba_ts)
 plot( decompose( dane_4plus_Wiadomosci_liczba_ts))
 acf( dane_4plus_Wiadomosci_liczba_ts)
+# na czestosciach Wiadomosci
+dane_4plus_Wiadomosci_czestosc_ts<-ts( data = dane_4plus$Wiadomosci_TVP1_procent, start = c(2013,1), frequency = 12)
+cycle( dane_4plus_Wiadomosci_czestosc_ts)
+aggregate( dane_4plus_Wiadomosci_czestosc_ts)
+time( dane_4plus_Wiadomosci_czestosc_ts)
+plot( dane_4plus_Wiadomosci_czestosc_ts, ylim=c(0, max(dane_4plus_Wiadomosci_czestosc_ts)))
+abline( reg=lm( dane_4plus_Wiadomosci_czestosc_ts~time( dane_4plus_Wiadomosci_liczba_ts) ), col="red")
+## Dekompozycja
+decompose( dane_4plus_Wiadomosci_czestosc_ts) # dekompozycha
+plot( decompose( dane_4plus_Wiadomosci_czestosc_ts))
+stl(dane_4plus_Wiadomosci_czestosc_ts, s.window="periodic") # dekompozycja sezonowa
+plot( stl(dane_4plus_Wiadomosci_czestosc_ts, s.window="periodic"))
+## Oszacowanie
+plot(dane_4plus_Wiadomosci_czestosc_ts)
+lines(lm(dane_4plus_Wiadomosci_czestosc_ts~time(dane_4plus_Wiadomosci_czestosc_ts))$fit,col="red",lwd=2)
+acf( dane_4plus_Wiadomosci_czestosc_ts)
+## roznice na procentach
+hist(diff( dane_4plus_Wiadomosci_czestosc_ts),col="red", breaks=20, ylim=c(0,40))
+lines(density(diff( dane_4plus_Wiadomosci_czestosc_ts)),lwd=2)
+### dodawanie oszacowanego rozkladu normalnego
+mu<-mean(diff(dane_4plus_Wiadomosci_czestosc_ts))
+sigma<-sd(diff(dane_4plus_Wiadomosci_czestosc_ts))
+x<-seq(-0.04,0.04,length=100)
+y<-dnorm(x,mu,sigma)
+lines(x,y,lwd=2,col="blue")
+### sprawdzanie przy pomocy funkcji "qqnorm" czy rzeczywiscie obserujemy rozklad normalny roznic
+qqnorm(diff(dane_4plus_Wiadomosci_czestosc_ts)) # wykres
+### sprawdzanie normalnosci przy pomocy testu kolmogorowa
+x<-diff(dane_4plus_Wiadomosci_czestosc_ts)
+ks.test(x,"pnorm",mean(x),sd(x))
+### sprawdzanie normalnosci przy pomocy Shapiro–Test - lepsze rozwiazanie
+shapiro.test(x) ### rozklad nie jest zbyt normalny ale troche przypomina wiec jest ok
+
+
+
 # na liczebnosciach FAKTY
 dane_4plus_Fakty_liczba_ts<-ts( data = dane_4plus$Fakty_TVN, start = c(2013,1), frequency = 12)
 cycle( dane_4plus_Fakty_liczba_ts)
