@@ -117,11 +117,10 @@ abline( reg=lm( dane_4plus_Wiadomosci_czestosc_ts~time( dane_4plus_Wiadomosci_li
 ## Dekompozycja
 decompose( dane_4plus_Wiadomosci_czestosc_ts) # dekompozycha
 plot( decompose( dane_4plus_Wiadomosci_czestosc_ts))
-stl(dane_4plus_Wiadomosci_czestosc_ts, s.window="periodic") # dekompozycja sezonowa
 plot( stl(dane_4plus_Wiadomosci_czestosc_ts, s.window="periodic"))
 ## Oszacowanie
 plot(dane_4plus_Wiadomosci_czestosc_ts)
-lines(lm(dane_4plus_Wiadomosci_czestosc_ts~time(dane_4plus_Wiadomosci_czestosc_ts))$fit,col="red",lwd=2)
+abline(lm(dane_4plus_Wiadomosci_czestosc_ts~time(dane_4plus_Wiadomosci_czestosc_ts)),col="red",lwd=2)
 acf( dane_4plus_Wiadomosci_czestosc_ts)
 ## roznice na procentach
 hist(diff( dane_4plus_Wiadomosci_czestosc_ts),col="red", breaks=20, ylim=c(0,40))
@@ -139,6 +138,30 @@ x<-diff(dane_4plus_Wiadomosci_czestosc_ts)
 ks.test(x,"pnorm",mean(x),sd(x))
 ### sprawdzanie normalnosci przy pomocy Shapiro–Test - lepsze rozwiazanie
 shapiro.test(x) ### rozklad nie jest zbyt normalny ale troche przypomina wiec jest ok
+# Linear Filtering of Time Series
+plot(dane_4plus_Wiadomosci_czestosc_ts,type="l")
+tui.1 <- filter(dane_4plus_Wiadomosci_czestosc_ts,filter=rep(1/5,5))
+tui.2 <- filter(dane_4plus_Wiadomosci_czestosc_ts,filter=rep(1/25,25))
+# tui.3 <- filter(dane_4plus_Wiadomosci_czestosc_ts,filter=rep(1/81,81))
+lines(tui.1,col="red")
+lines(tui.2,col="purple")
+#lines(tui.3,col="blue")
+# Decomposition of Time Series
+plot(stl(dane_4plus_Wiadomosci_czestosc_ts, s.window="periodic")) # dekompozycja sezonowa
+# Estimation 
+plot( dane_4plus_Wiadomosci_czestosc_ts, ylim=c(0, max(dane_4plus_Wiadomosci_czestosc_ts)))
+abline( reg=lm( dane_4plus_Wiadomosci_czestosc_ts~time( dane_4plus_Wiadomosci_liczba_ts) ), col="red")
+summary( lm( dane_4plus_Wiadomosci_czestosc_ts~time( dane_4plus_Wiadomosci_liczba_ts)))
+# Exponential Smoothing and Prediction of Time Series
+plot(dane_4plus_Wiadomosci_czestosc_ts)
+lines(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts),col="red")
+lines(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts)$fitted,col="red")
+## predict
+dane.hw<-HoltWinters(dane_4plus_Wiadomosci_czestosc_ts)
+predict(dane.hw,n.ahead=12)
+plot(dane_4plus_Wiadomosci_czestosc_ts, xlim=c(2013.0, 2017.15))
+lines(predict(dane.hw,n.ahead=48),col="red")
+# ARIMA–Models
 
 
 
