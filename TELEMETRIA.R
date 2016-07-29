@@ -136,7 +136,7 @@ qqnorm(diff(dane_4plus_Wiadomosci_czestosc_ts)) # wykres
 ### sprawdzanie normalnosci przy pomocy testu kolmogorowa
 x<-diff(dane_4plus_Wiadomosci_czestosc_ts)
 ks.test(x,"pnorm",mean(x),sd(x))
-### sprawdzanie normalnosci przy pomocy Shapiro–Test - lepsze rozwiazanie
+### sprawdzanie normalnosci przy pomocy Shapiro?Test - lepsze rozwiazanie
 shapiro.test(x) ### rozklad nie jest zbyt normalny ale troche przypomina wiec jest ok
 # Linear Filtering of Time Series
 plot(dane_4plus_Wiadomosci_czestosc_ts,type="l")
@@ -153,17 +153,42 @@ plot( dane_4plus_Wiadomosci_czestosc_ts, ylim=c(0, max(dane_4plus_Wiadomosci_cze
 abline( reg=lm( dane_4plus_Wiadomosci_czestosc_ts~time( dane_4plus_Wiadomosci_liczba_ts) ), col="red")
 summary( lm( dane_4plus_Wiadomosci_czestosc_ts~time( dane_4plus_Wiadomosci_liczba_ts)))
 # Exponential Smoothing and Prediction of Time Series
-plot(dane_4plus_Wiadomosci_czestosc_ts)
-lines(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts),col="red")
+plot(dane_4plus_Wiadomosci_czestosc_ts, lwd=2)
+lines( fitted(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts))[,1] ,col="red", lwd=2)
+lines( fitted(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts))[,2] ,col="green3", lwd=2)
+# lines( fitted(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts))[,4] ,col="green3", lwd=2)
+
 lines(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts)$fitted,col="red")
 ## predict
 dane.hw<-HoltWinters(dane_4plus_Wiadomosci_czestosc_ts)
 predict(dane.hw,n.ahead=12)
 plot(dane_4plus_Wiadomosci_czestosc_ts, xlim=c(2013.0, 2017.15))
 lines(predict(dane.hw,n.ahead=48),col="red")
-# ARIMA–Models
+#### predykcja
+dane_4plus_Wiadomosci_czestosc_ts_HW<-HoltWinters(dane_4plus_Wiadomosci_czestosc_ts)
+predict(dane_4plus_Wiadomosci_czestosc_ts_HW,n.ahead=12)
 
+plot(dane_4plus_Wiadomosci_czestosc_ts,xlim=c(2013, 2018), lwd=2)
+lines(predict( dane_4plus_Wiadomosci_czestosc_ts_HW, n.ahead=12), col="red", lwd=2)
 
+### UWAGA !!! MODEL BAZRDZO ZLE PRZEWIDUJE PRZYSZLOSC -> TO JEST WINA OSTATNIEGO ZALAMANIA
+
+# ARIMAâ€“Models
+## autocorrelations and partial autocorrelations
+## Przyklad ARIMA
+sim.ar<-arima.sim(list(ar=c(0.4,0.4)),n=1000)
+sim.ma<-arima.sim(list(ma=c(0.6,-0.4)),n=1000)
+par(mfrow=c(2,2))
+acf(sim.ar,main="ACF of AR(2) process")
+acf(sim.ma,main="ACF of MA(2) process")
+pacf(sim.ar,main="PACF of AR(2) process")
+pacf(sim.ma,main="PACF of MA(2) process")
+
+# ARIMAâ€“Models
+
+fit<-arima( dane_4plus_Wiadomosci_czestosc_ts, order=c(1,0,1))
+tsdiag(fit)
+Box.test(fit$residuals,lag=2)
 
 # na liczebnosciach FAKTY
 dane_4plus_Fakty_liczba_ts<-ts( data = dane_4plus$Fakty_TVN, start = c(2013,1), frequency = 12)
