@@ -7,31 +7,34 @@ output: html_document
 
 # Materiały 
 
-
-
-https://onlinecourses.science.psu.edu/stat510/node/47
+[https://onlinecourses.science.psu.edu/stat510/node/47](https://onlinecourses.science.psu.edu/stat510/node/47)
 
 __Rodzaje procesów__
 
-http://www.investopedia.com/articles/trading/07/stationary.asp
+[http://www.investopedia.com/articles/trading/07/stationary.asp](http://www.investopedia.com/articles/trading/07/stationary.asp)
 
 __YouTube__
 
-https://www.youtube.com/watch?v=-5S-L_4GHU4
+[https://www.youtube.com/watch?v=-5S-L_4GHU4](https://www.youtube.com/watch?v=-5S-L_4GHU4)
+
 
 __a-little-book-of-r-for-time-series__
 
-https://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/src/timeseries.html
+[https://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/src/timeseries.html](https://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/src/timeseries.html)
+
+__Dekompozycja szeregu czasowego__
+
+[https://anomaly.io/seasonal-trend-decomposition-in-r/](https://anomaly.io/seasonal-trend-decomposition-in-r/)
 
 __Box–Jenkins__ - metoda 
 
-https://en.wikipedia.org/wiki/Box%E2%80%93Jenkins
+[https://en.wikipedia.org/wiki/Box%E2%80%93Jenkins](https://en.wikipedia.org/wiki/Box%E2%80%93Jenkins)
 
 # Pobieranie danych
 
 ```{r}
 # setwd("C:/Users/Zbyszek/Desktop/WAS/TELEMETRIA")
-library ( googlesheets)
+library( googlesheets)
 library( ggplot2)
 library( reshape2)
 klucz<-extract_key_from_url("https://docs.google.com/spreadsheets/d/1CwAWrns8CAgizOu4iAHIqb4ckCcDfY_8xPKYr7CAUs4/edit?usp=sharing")
@@ -54,7 +57,7 @@ ndane_16_49$variable<-as.character(ndane_16_49$variable)
 colnames(ndane_16_49)<-c("miesiac", "program","ogladalnosc")
 ```
 
-# Wykresy dla danych 4+
+# Tworzenie wykresy dla danych o osobach w wieku 4+
 
 ```{r}
 ##############
@@ -120,7 +123,13 @@ Dla omawianego szeregu czasowego analiza danych będzie się składała z nastę
     b. jeśli proces stochastyczny okaże się niestabiln to na podstawie danych przygotowany zostanie specjalny model nie tylko będzie dobrze objaśnial obserowane zmiany, ale tekże będzie stacjonarny
     c. predykcja przyszłego poziomu oglądalności przy pomocy modelu stacjonarnego
   
-## Analiza danych dla grupy wiekowej 4+ 
+# Analiza danych dla grupy wiekowej 4+ 
+
+Analiza danych skupia się na problemie oglądalności "Wiadomości" TVP. 
+
+## 1. Prosta analiza komponentów
+
+Prezentacja danych 
 
 ```{r}
 library(timeSeries) # pakiet do analizy szeregow czasowych
@@ -130,16 +139,129 @@ dane_4plus_Wiadomosci_liczba_ts<-ts( data = dane_4plus$Wiadomosci_TVP1, start = 
 cycle( dane_4plus_Wiadomosci_liczba_ts)
 aggregate( dane_4plus_Wiadomosci_liczba_ts)
 time( dane_4plus_Wiadomosci_liczba_ts)
-plot( dane_4plus_Wiadomosci_liczba_ts, lwd=2)
-points( dane_4plus_Wiadomosci_liczba_ts, pch=19)
-abline( reg=lm( dane_4plus_Wiadomosci_liczba_ts~time( dane_4plus_Wiadomosci_liczba_ts) ), col="red3", lwd=2)
-decompose( dane_4plus_Wiadomosci_liczba_ts)
-plot( decompose( dane_4plus_Wiadomosci_liczba_ts))
-acf( dane_4plus_Wiadomosci_liczba_ts, xlim=c(1,4) , lag.max = 60)
-pacf(dane_4plus_Wiadomosci_liczba_ts, xlim=c(1,4) , lag.max = 60)
+plot( dane_4plus_Wiadomosci_liczba_ts, lwd=2, main="Szacowana liczba widzów\n'Wiadomości' TVP", ylab="liczba widzów", xlab="data")
+# points( dane_4plus_Wiadomosci_liczba_ts, pch=19)
+abline( reg=lm( dane_4plus_Wiadomosci_liczba_ts~time( dane_4plus_Wiadomosci_liczba_ts) ), col="red3", lwd=2, lty = 2)
+```
+
+Dekompozycja danych na 3 elementy:
+
+  * trend
+  * składniki sezonowy
+  * składnik losowy
+
+Wybrałem dekompozycję addytywna (additive model) ponieważ wydaje się, że amplituda zmian w czasie (wariancja) nie zmienia się. Gdyby rosła lepszym rozwiązaniem byłoby zastosowanie dekompozycji multiplikatywnej (multiplicative model). 
+
+Additive:
+Time series = Seasonal + Trend + Random
+
+Multiplicative:
+Time series = Trend * Seasonal *Random
+
+Dekompozycję można przeprowadzić w R przy pomocy jednej funkcji __decompose()__
+
+```{r trend_decimpose(), }
+# decompose( dane_4plus_Wiadomosci_liczba_ts)
+plot( decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive"))
+# acf( dane_4plus_Wiadomosci_liczba_ts, xlim=c(1,4) , lag.max = 60)
+# pacf(dane_4plus_Wiadomosci_liczba_ts, xlim=c(1,4) , lag.max = 60)
+```
+
+lub przeprowadzić ją "ręcznie" (przypominam, że jest to dekompozycja addytywna)
+
+TREND - czyli średnia ruchoma wyznaczona przy pomocy funkcji __ma()__ (moving average) z pakiegu __forecast__
+
+```{r trend_recznie}
+library(forecast)
+ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ) # argument "order" wskazuje jaki jaka jest dlugosc okresu szerego czasowego - tutaj 12 miesiecy
+plot(ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ))
+```
+
+Trend można zestawić z danymi
+
+```{r trend_recznie_zestawieni}
+plot(dane_4plus_Wiadomosci_liczba_ts)
+lines(ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ), lty=2, lwd=2, col="red") # trend
+```
+
+i sprawdzić czy obliczenia "ręczne" dają taki sam wynik jak przy użyciu funkcji __decompose()__
+
+ 
+```{r trend_recznie_sprawdzenie}
+decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["trend"]] == ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 )
+```
+
+Jak widać wszystkie wartości się zgadzają.
+
+
+ODTRENDOWANIE
+
+Odjęcie od danych trendu
+
+```{r}
+plot(dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ))
+```
+
+PRZECIETNA SEZONOWOŚĆ
+
+```{r}
+# dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-
+#   tapply((dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ) ), cycle((dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ) )), FUN=mean, na.rm=TRUE)
+#   
+#   t(matrix(data = dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ), nrow = 12))
+# 
+
+dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-colMeans( dane_4plus_Wiadomosci_liczba_ts_sezonowosc, na.rm = T) # wyciaganie sredniej dla poszczegolnych kolumn (czyli miesiecy)
+dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-as.ts(rep(dane_4plus_Wiadomosci_liczba_ts_sezonowosc,4)) # rozciaganie wynikow dla 12 miesiecy na caly badany okres
+plot(dane_4plus_Wiadomosci_liczba_ts_sezonowosc, ylab="oglądalność" , main="sezonowość")
+```
+
+SKŁADNIK LOSOWY
+
+```{r}
+filtr<-is.na( ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ))==FALSE
+dane_4plus_Wiadomosci_liczba_ts_random<-as.ts(dane_4plus_Wiadomosci_liczba_ts[filtr]-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 )[filtr]-dane_4plus_Wiadomosci_liczba_ts_sezonowosc[ filtr])
+plot( dane_4plus_Wiadomosci_liczba_ts_random)
+```
+
+ŁĄCZENIE KOMPONENTÓW
+
+```{r}
+plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data")
+lines(  
+  ts(
+    ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 )[filtr]+
+    dane_4plus_Wiadomosci_liczba_ts_sezonowosc[filtr]+
+    dane_4plus_Wiadomosci_liczba_ts_random[filtr],
+    start = c(2013,7), frequency = 12
+  ), col="red"
+)
+
+plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data")
+lines( 
+  decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["trend"]]+
+  decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["seasonal"]]+
+  decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["random"]],
+  col="red"
+)
 
 
 ```
+
+
+
+
+## 2. Wygładzanie wykładnicze
+
+## 3. Model ARIMA - modelowanie wg wzoru Box-Jenkinsa
+
+### i. Identyfkacja modelu
+
+### ii. estymacja parametrów
+
+### iii. sprawdzenie diagnostyki
+
+
 
 1. widać pewien trend
 2. widać sezonowośc 
@@ -156,9 +278,9 @@ Model z jednym opóźnieniem AR(1)
 
 Założenia:
 
-  1. składnik losowy ma rozkład normalny z średnią równą zero i stałą wariancję
+  1. składnik losowy ma rozkład normalny z średnią równą zero i stałą wariancję,
   2. składnik losowy jest niezależny od wartości zmiennej objaśnianej
-  
+
 ```{r}
 dane_4plus_Wiadomosci_liczba_ts_ARIMA<-arima( dane_4plus_Wiadomosci_liczba_ts, order = c(1,0,0))
 ```
@@ -175,16 +297,8 @@ Powyższy wykres pokazuje, że reszty są zależne od wartości zmiennej objaśn
 
 Konieczne jest sprawdzenie korelacji między zmienną i jej opóźnieniami. Wykorzystana zostanie do tego funkcja autokorelacji (ACF - autocorrelation function)
 
-```{r}
-
-```
-
-
 ```{r, eval=FALSE, include=FALSE, echo=FALSE}
 ################ SZEREG CZASOWY WIADOMOSCI TVP
-
-
-
 # na czestosciach Wiadomosci
 dane_4plus_Wiadomosci_czestosc_ts<-ts( data = dane_4plus$Wiadomosci_TVP1_procent, start = c(2013,1), frequency = 12)
 cycle( dane_4plus_Wiadomosci_czestosc_ts)
@@ -235,7 +349,6 @@ plot(dane_4plus_Wiadomosci_czestosc_ts, lwd=2)
 lines( fitted(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts))[,1] ,col="red", lwd=2)
 lines( fitted(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts))[,2] ,col="green3", lwd=2)
 # lines( fitted(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts))[,4] ,col="green3", lwd=2)
-
 lines(HoltWinters(dane_4plus_Wiadomosci_czestosc_ts)$fitted,col="red")
 ## predict
 dane.hw<-HoltWinters(dane_4plus_Wiadomosci_czestosc_ts)
@@ -287,11 +400,6 @@ ts.plot( dane_4plus_Fakty_liczba_ts, dane_4plus_Wiadomosci_liczba_ts, col=c("blu
 
 
 
-
-
-
-
-
 # Wykresy dla danych 16-49
 
 ```{r}
@@ -333,9 +441,3 @@ ggplot(nrdane_16_49, aes(x=miesiac , y=ogladalnosc, group=program, color=program
   labs(title = "Procentowe różnice rok do roku w grupie widzów 16-49")
 dev.off()
 ```
-
-
-
-
-
-
