@@ -139,7 +139,7 @@ dane_4plus_Wiadomosci_liczba_ts<-ts( data = dane_4plus$Wiadomosci_TVP1, start = 
 cycle( dane_4plus_Wiadomosci_liczba_ts)
 aggregate( dane_4plus_Wiadomosci_liczba_ts)
 time( dane_4plus_Wiadomosci_liczba_ts)
-plot( dane_4plus_Wiadomosci_liczba_ts, lwd=2, main="Szacowana liczba widzów\n'Wiadomości' TVP", ylab="liczba widzów", xlab="data")
+plot( dane_4plus_Wiadomosci_liczba_ts, lwd=2, main="Szacowana liczba widzów\n'Wiadomości' TVP", ylab="liczba widzów", xlab="data", ylim=c( 0, max(dane_4plus_Wiadomosci_liczba_ts)))
 # points( dane_4plus_Wiadomosci_liczba_ts, pch=19)
 abline( reg=lm( dane_4plus_Wiadomosci_liczba_ts~time( dane_4plus_Wiadomosci_liczba_ts) ), col="red3", lwd=2, lty = 2)
 ```
@@ -180,15 +180,16 @@ plot(ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ))
 Trend można zestawić z danymi
 
 ```{r trend_recznie_zestawieni}
+dane_4plus_Wiadomosci_liczba_ts_trend<-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12,  centre = T )
 plot(dane_4plus_Wiadomosci_liczba_ts)
-lines(ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ), lty=2, lwd=2, col="red") # trend
+lines(dane_4plus_Wiadomosci_liczba_ts_trend, lty=2, lwd=2, col="red") # trend
 ```
 
 i sprawdzić czy obliczenia "ręczne" dają taki sam wynik jak przy użyciu funkcji __decompose()__
 
  
 ```{r trend_recznie_sprawdzenie}
-decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["trend"]] == ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 )
+decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["trend"]] == dane_4plus_Wiadomosci_liczba_ts_trend
 ```
 
 Jak widać wszystkie wartości się zgadzają.
@@ -199,20 +200,22 @@ ODTRENDOWANIE
 Odjęcie od danych trendu
 
 ```{r}
-plot(dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ))
+plot(dane_4plus_Wiadomosci_liczba_ts-dane_4plus_Wiadomosci_liczba_ts_trend)
 ```
 
 PRZECIETNA SEZONOWOŚĆ
 
 ```{r}
-# dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-
-#   tapply((dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ) ), cycle((dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ) )), FUN=mean, na.rm=TRUE)
-#   
-#   t(matrix(data = dane_4plus_Wiadomosci_liczba_ts-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ), nrow = 12))
-# 
+liczba_brak_miesiecy<-frequency (dane_4plus_Wiadomosci_liczba_ts)-length( dane_4plus_Wiadomosci_liczba_ts)%%frequency (dane_4plus_Wiadomosci_liczba_ts)
+dane_4plus_Wiadomosci_liczba_ts_detrend<-dane_4plus_Wiadomosci_liczba_ts-dane_4plus_Wiadomosci_liczba_ts_trend
+dane_4plus_Wiadomosci_liczba_ts_m<-matrix(data = c(dane_4plus_Wiadomosci_liczba_ts_detrend, rep(NA, liczba_brak_miesiecy) ), ncol = 12, nrow = 4, byrow = TRUE)
+dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-colMeans(dane_4plus_Wiadomosci_liczba_ts_m, na.rm = T)
+dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-dane_4plus_Wiadomosci_liczba_ts_sezonowosc-mean( dane_4plus_Wiadomosci_liczba_ts_sezonowosc) # to jest najwazniejszy krok -> przesuniecie sredniej sezonowosci do zera
+dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-ts( dane_4plus_Wiadomosci_liczba_ts_sezonowosc,  start = c(2013,1), end =c(2016,6) , frequency = 12 )
 
-dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-colMeans( dane_4plus_Wiadomosci_liczba_ts_sezonowosc, na.rm = T) # wyciaganie sredniej dla poszczegolnych kolumn (czyli miesiecy)
-dane_4plus_Wiadomosci_liczba_ts_sezonowosc<-as.ts(rep(dane_4plus_Wiadomosci_liczba_ts_sezonowosc,4)) # rozciaganie wynikow dla 12 miesiecy na caly badany okres
+
+dane_4plus_Wiadomosci_liczba_ts_sezonowosc==decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["seasonal"]]
+
 plot(dane_4plus_Wiadomosci_liczba_ts_sezonowosc, ylab="oglądalność" , main="sezonowość")
 ```
 
@@ -220,38 +223,47 @@ SKŁADNIK LOSOWY
 
 ```{r}
 filtr<-is.na( ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 ))==FALSE
-dane_4plus_Wiadomosci_liczba_ts_random<-as.ts(dane_4plus_Wiadomosci_liczba_ts[filtr]-ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 )[filtr]-dane_4plus_Wiadomosci_liczba_ts_sezonowosc[ filtr])
-plot( dane_4plus_Wiadomosci_liczba_ts_random)
+dane_4plus_Wiadomosci_liczba_ts_s.losowy<-dane_4plus_Wiadomosci_liczba_ts-dane_4plus_Wiadomosci_liczba_ts_trend-dane_4plus_Wiadomosci_liczba_ts_sezonowosc
+dane_4plus_Wiadomosci_liczba_ts_s.losowy==decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["random"]] # brak zgodnosci wynika z niewielkiej niedokladnosci 
+
+plot( dane_4plus_Wiadomosci_liczba_ts_s.losowy)
 ```
 
 ŁĄCZENIE KOMPONENTÓW
 
 ```{r}
-plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data")
-lines(  
-  ts(
-    ma( dane_4plus_Wiadomosci_liczba_ts, order = 12 )[filtr]+
-    dane_4plus_Wiadomosci_liczba_ts_sezonowosc[filtr]+
-    dane_4plus_Wiadomosci_liczba_ts_random[filtr],
-    start = c(2013,7), frequency = 12
-  ), col="red"
-)
-
-plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data")
-lines( 
-  decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["trend"]]+
-  decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["seasonal"]]+
-  decompose( dane_4plus_Wiadomosci_liczba_ts, type ="additive")[["random"]],
-  col="red"
-)
-
-
+plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data", lwd=2, ylim=c(0, max(dane_4plus_Wiadomosci_liczba_ts)))
+lines(dane_4plus_Wiadomosci_liczba_ts_trend + dane_4plus_Wiadomosci_liczba_ts_sezonowosc + dane_4plus_Wiadomosci_liczba_ts_s.losowy , col="red", type="h", lwd=2)
 ```
 
+Podsumowując: 
 
+Wawiancja w czasie raczej jest niezmienna.
+Dekompozycja przy pomocy modelu addytywnego jest wystarczająca. 
+Widać wyrażną sezonowość w ciągu roku - spadki oglądalności w lecie
+
+```{r}
+plot( window( dane_4plus_Wiadomosci_liczba_ts_sezonowosc, 2013, 2013.917), xlab="Miesiące", ylab="sezonowe zmiany oglądalności", main= "Sezonowość na \nprzykładzie roku 2013")
+```
+
+Widać również trend majelącej oglądalności
+
+```{r}
+plot( dane_4plus_Wiadomosci_liczba_ts, xlab="Miesiące", ylab="sezonowe zmiany oglądalności", main= "Trend",ylim=c(0, max(dane_4plus_Wiadomosci_liczba_ts)))
+lines(dane_4plus_Wiadomosci_liczba_ts_trend,  col="red", type="o", lwd=2)
+# lines(dane_4plus_Wiadomosci_liczba_ts_trend,  col="red", type="h", lwd=2)
+```
+
+1. widać pewien trend
+2. widać sezonowośc 
+3. nie widać obserwacji odstających 
+4. wariancja wydaje się byc stała
 
 
 ## 2. Wygładzanie wykładnicze
+
+
+
 
 ## 3. Model ARIMA - modelowanie wg wzoru Box-Jenkinsa
 
@@ -263,10 +275,7 @@ lines(
 
 
 
-1. widać pewien trend
-2. widać sezonowośc 
-3. nie widać obserwacji odstających 
-4. wariancja wydaje się byc stała
+
 
 ```{r}
 lag.plot(dane_4plus_Wiadomosci_liczba_ts, lags = 1, do.lines = FALSE, col="red", pch=19, diag.col = "blue")
