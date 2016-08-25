@@ -129,7 +129,7 @@ Analiza danych skupia się na problemie oglądalności "Wiadomości" TVP.
 
 ## 1. Prosta analiza komponentów
 
-Prezentacja danych 
+### Prezentacja danych 
 
 ```{r}
 library(timeSeries) # pakiet do analizy szeregow czasowych
@@ -144,7 +144,27 @@ plot( dane_4plus_Wiadomosci_liczba_ts, lwd=2, main="Szacowana liczba widzów\n'W
 abline( reg=lm( dane_4plus_Wiadomosci_liczba_ts~time( dane_4plus_Wiadomosci_liczba_ts) ), col="red3", lwd=2, lty = 2)
 ```
 
-Dekompozycja danych na 3 elementy:
+### Filtrowanie szeregu czasowego - wygładzanie przy pomocy średniej ruchomej
+
+
+```{r}
+plot( dane_4plus_Wiadomosci_liczba_ts ,type="l", ylim=c(0, max(dane_4plus_Wiadomosci_liczba_ts)), lwd=2)
+# (2*a+1) - to jest podzielnik w sredniej ruchomej - dla sredniej z trzech obserwacji rowny 3 dla 5 obserwacji rowny 5 itd;  parametr "a"" decyduje o tym na ile okresow w przod i tyl siegamy srednia ruchoma; np. a=2 oznacza, ze idziemy 2 pomiary w przod i tyl - lacznie 5 obserwacji;
+  a<-2
+  dane_4plus_Wiadomosci_liczba_ts_filtrowanie1 <- filter(dane_4plus_Wiadomosci_liczba_ts, filter=rep(1/(2*a+1),(2*a+1))) 
+  a<-4
+  dane_4plus_Wiadomosci_liczba_ts_filtrowanie2 <- filter(dane_4plus_Wiadomosci_liczba_ts, filter=rep(1/(2*a+1),(2*a+1)))
+  a<-5
+  dane_4plus_Wiadomosci_liczba_ts_filtrowanie3 <- filter(dane_4plus_Wiadomosci_liczba_ts, filter=rep(1/(2*a+1),(2*a+1)))
+lines(dane_4plus_Wiadomosci_liczba_ts_filtrowanie1,col="red", lwd=2)
+lines(dane_4plus_Wiadomosci_liczba_ts_filtrowanie2,col="green", lwd=2)
+lines(dane_4plus_Wiadomosci_liczba_ts_filtrowanie3,col="blue", lwd=2)
+```
+
+Ponieważ w ramach jednego okresu ("fali") mamy niewiele pomiarów, a przebieg oglądalności jest bardzo zmienny wiec srednie z 12 pomiarow (a=5) przypominaja najbardziej trend i slabo odzwierciedlaja przebieg zmiennosci - to kwestia małej "gęstości" pomiarów. I więcej obserwacji w ramach jednego okresu tym więcej obserwacji może obejmować średnia ruchoma. 
+
+
+### Dekompozycja danych na 3 elementy:
 
   * trend
   * składniki sezonowy
@@ -229,6 +249,8 @@ dane_4plus_Wiadomosci_liczba_ts_s.losowy==decompose( dane_4plus_Wiadomosci_liczb
 plot( dane_4plus_Wiadomosci_liczba_ts_s.losowy)
 ```
 
+Wygląda na to, że wariancja w czasie się zmienia. W ogóle dziwne rzeczy dzieją się 
+
 ŁĄCZENIE KOMPONENTÓW
 
 ```{r}
@@ -260,24 +282,149 @@ lines(dane_4plus_Wiadomosci_liczba_ts_trend,  col="red", type="o", lwd=2)
 4. wariancja wydaje się byc stała
 
 
+### Regresja 
+
+Dekompozycja, czy filtrowanie/wygładzanie danych pozwalają rozłożyć szereg czasowy na elementy, które ułatwiają nam opisywanie szeregu czasowego, ale nie dają nam narzędzi do opisu procesów, które w nim zachodzą. Do tego wykorzystamy więc zwykła regresję. Przy jej pomocy postaramy się określić jak "działa" szereg czasowy.
+
+Do dyspozycji są dwie funkcje: 
+
+__lm()__ - linear models
+__lsfit()__ - least squares fit (czyli MNK - jeden z modeli liniowych)
+
+Sprawa wydaje się prosta, bo trend jest raczej liniowy (nie przypomina paraboli) czyli prawdopodobnie wystarczy nam zwykły model liniowy.
+
+Xt = a0+a1*Xt-1+et
+
+gdzie: 
+
+  * a0 -stała
+  * a1 - parametr opóźnienia (poprzedniej obserwacji)
+  * Xt-1 - opóźnienie o jeden (wartość zmiennej w okresie o jeden wcześniejszym)
+  * et - składnik losowy
+  
+```{r}
+plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data", lwd=2, ylim=c(0, max(dane_4plus_Wiadomosci_liczba_ts)))
+lines( as.numeric( time(dane_4plus_Wiadomosci_liczba_ts)),  lm(dane_4plus_Wiadomosci_liczba_ts~time(dane_4plus_Wiadomosci_liczba_ts))$fit, lwd=3, lty=2, col="red")
+lines(dane_4plus_Wiadomosci_liczba_ts_trend,  col="navyblue", type="o", lwd=2)
+```
+
+Wykorzystaliśmy regresję liniową więc nasze oszacowanie objaśnia tylko trend, a nie wszystkie subtelne zmiany jakie zachodzą w poszczególnych sezonach. 
+
+Możemy za to więcej powiedzieć o ogólnej tendencji jaka obserwujemy. 
+
+```{r}
+summary(lm(dane_4plus_Wiadomosci_liczba_ts~time(dane_4plus_Wiadomosci_liczba_ts)))
+```
+
+Co możemy powiedzieć o modelu:
+
+  * parametry są istotne (dla poziomu ufności 0,95)
+  * parametr czasu jest ujemny, czyli z czasem liczba widzów maleje - w naszym przypadku każdy miesiąc to przeciętnie `r round(184743*(1/12))` osób. 
+  * Bardzo mała wartość R-kwadrat i skorygowanego R-kwadrat (0,1 i 0,07) - czyli model nie wyjaśnia wariancji (zmienności); widzimy to gołym okiem.
+
+Model słabo przewiduje wartości zmiennej, ale nie sposób go tak od razu odrzucić. Wydaje się, że dobrze ilustruje trend. Niestety trudno to udowodnić inaczej niż na oko.  Tak czy inaczej mamy coś czego możemy się uchwycić. Dla prezentowanych danych zbudowaliśmy model liniowy, który zawiera informacje o przeciętnej miesięcznej zmianie jaka zachodzi w całym badanym czasie. 
+
+Czas na model uwzględniający sezonowość
+
+```{r}
+plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data", lwd=2, ylim=c(0, max(dane_4plus_Wiadomosci_liczba_ts)))
+czas<-time(dane_4plus_Wiadomosci_liczba_ts)
+lines( as.numeric( time(dane_4plus_Wiadomosci_liczba_ts)),  lm(dane_4plus_Wiadomosci_liczba_ts~czas+sin(2*pi*czas)+cos(2*pi*czas) )$fit, lwd=3, lty=2, col="red")
+```
+
+Przy pomocy transformacji Fourniera udało się uwzględnić zmiany zachodzące sezonowo:
+
+```{r}
+summary( lm(dane_4plus_Wiadomosci_liczba_ts~czas+sin(2*pi*czas)+cos(2*pi*czas) ))
+```
+
+Co możemy powiedzieć o modelu:
+
+  * wszystkie parametry są istotne (dla poziomu ufności 0,95)
+  * parametr czasu jest ujemny, czyli z czasem liczba widzów maleje - w naszym przypadku każdy miesiąc to przeciętnie `r round(184743*(1/12))` osób. 
+  * prarametry sezonowości sin i cos są odpowiednio ujemnei dodatnie =
+  * Wartość R-kwadrat i skorygowanego R-kwadrat są znacznie wyższe (0,82 i 0,81) - czyli model wyjaśnia wariancję (zmienności) całkiem dobrze; widzimy to gołym okiem.
+  * Wartość P dla statystyki F to ~0 a więc można odrzucić hipotezę o nieistotności R (czyli calego modelu)
+
 ## 2. Wygładzanie wykładnicze
 
+Czas na przewidywania - najciekawszą rzecz w szeregach czasowych. Istnieje kilka podejść do tego tematu. Zaczniemy od najprostrzych metod korzystających z wygladzania.
 
+Przyjmiemy, że w każda obserwacja zależy w pewnym stopniu od tego co było wcześniej - od opóźnień z poprzednich okresów. Przy czym zakładamy, że im dawniej tym mniejszy wpływ na teraźniejszość. Wyjaśniamy bierzące wartości przy pomocy przeszłych. 
+
+Xt=a0\*X(t-0)+a1\*X(t-1)+a2\*X(t-2)+a3*Xt-3+...
+
+gdzie: 
+
+ai= alfa(1-alfa)^i oraz 0<alfa<1
+
+Ale wygładzanie wykładnicze powinno być stosowane tylko do szeregów czasowych bez trendu liniowego i sezonowości. Żeby obejść to utrudnienie używa się procedury __Holta–Wintersa__. Korzysta ona z trzech parametrów wygładzających: 
+
+  * alfa (jak wyżej),
+  * beta (trend)
+  * gamma (zmiany sezonowe). 
+
+```{r}
+plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data", lwd=2, ylim=c(0, max(dane_4plus_Wiadomosci_liczba_ts)))
+lines( HoltWinters(dane_4plus_Wiadomosci_liczba_ts)$fitted[,"xhat"],col="red", lty=2, lwd=2)
+HoltWinters(dane_4plus_Wiadomosci_liczba_ts)
+```
+
+W modelu uwzględniono opóźnienia z wykładniczymi wagami (alfa=1) i sezonowość (gamma=1) odrzucono za to trend (beta=0).
+
+Czas na predykcję
+
+```{r}
+plot( dane_4plus_Wiadomosci_liczba_ts,   ylab="liczba widzów", xlab="data", lwd=2, ylim=c(0, max(dane_4plus_Wiadomosci_liczba_ts)), xlim=c(min(time( dane_4plus_Wiadomosci_liczba_ts)), 2017.917))
+lines( predict( HoltWinters(dane_4plus_Wiadomosci_liczba_ts), n.ahead=12),col="navyblue", lty=4, lwd=3)
+```
+
+Mamy predykcjęna 12 miesięcy w przód do czerwca 2017. 
 
 
 ## 3. Model ARIMA - modelowanie wg wzoru Box-Jenkinsa
 
-### i. Identyfkacja modelu
+Czas na ulubiony model ekonometri ARIMA. Tą procedurę postępowania określa się mianem podejścia Boxa–Jenkinsa 
 
-### ii. estymacja parametrów
+AR - auto regresion 
+MR - moving average
 
-### iii. sprawdzenie diagnostyki
 
+Procedura składa się z następujących etapów:
 
+  1. Identyfkacja modelu
+  2. estymacja parametrów
+  3. sprawdzenie diagnostyki
+
+### Analiza autokorelacji i cześciowej autokorelacji
+
+```{r}
+sim.ar<-arima.sim(list(ar=c(0.4,0.4)),n=1000)
+sim.ma<-arima.sim(list(ma=c(0.6,-0.4)),n=1000)
+par(mfrow=c(2,2))
+acf(sim.ar,main="ACF of AR(2) process")
+acf(sim.ma,main="ACF of MA(2) process")
+pacf(sim.ar,main="PACF of AR(2) process")
+pacf(sim.ma,main="PACF of MA(2) process")
+```
 
 
 
 ```{r}
+par(mfrow=c(1,1))
+data(LakeHuron)
+plot(LakeHuron, ylim=c(0,max(LakeHuron)))
+fit<-arima(LakeHuron,order=c(1,0,1))
+tsdiag(fit)
+```
+
+
+
+```{r}
+
+x <- 1:100
+filter(x, rep(1, 3))
+
 lag.plot(dane_4plus_Wiadomosci_liczba_ts, lags = 1, do.lines = FALSE, col="red", pch=19, diag.col = "blue")
 ```
 
